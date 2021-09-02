@@ -6,7 +6,12 @@ enable_testing()
 
 
 include_directories(include/grpcPlusPromise)
-#add_library(grpcPlusPromise grpcPlusPromise.cpp)
+add_library(grpcPlusPromise src/grpcPlusPromise.cpp)
+
+add_subdirectory("3rdparty/Promise")
+
+target_link_libraries(grpcPlusPromise
+                      Promise )
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

@@ -1,7 +1,7 @@
 #ifndef GRPC_PLUS_PROMISE
 #define GRPC_PLUS_PROMISE
 
-#include <AsyncCall.h>
+#include <grpcPlusPromise/AsyncCall.h>
 
 #include <grpc++/grpc++.h>
 
@@ -18,8 +18,9 @@ class GreeterClient {
             : stub_(STUB__::NewStub(channel)) {}
 
     // Assembles the client's payload and sends it to the server.
-    template<typename ASYNC_CALL__ , typename CALL_FUNC__>
-    void call(const ASYNC_CALL__ &call) {
+    template<typename REQUEST__ ,typename ASYNC_CALL__ , typename DATA__,
+      std::unique_ptr< ::grpc::ClientAsyncResponseReader<DATA__>> (*CALL_FUNC__)(::grpc::ClientContext* context, REQUEST__ request, ::grpc::CompletionQueue* cq)>
+    void call(REQUEST__ request , const ASYNC_CALL__ &call) {
         // Data we are sending to the server.
         //HelloRequest request;
         //request.set_name(user);
@@ -53,14 +54,15 @@ class GreeterClient {
         // Block until the next result is available in the completion queue "cq".
         while (cq_.Next(&got_tag, &ok)) {
             // The tag in this example is the memory location of the call object
-            AsyncClientCall* call = static_cast<AsyncClientCall*>(got_tag);
+            IAsyncCall* call = static_cast<IAsyncCall*>(got_tag);
 
             // Verify that the request was completed successfully. Note that "ok"
             // corresponds solely to the request for updates introduced by Finish().
             GPR_ASSERT(ok);
 
-            if (call->status.ok())
-                std::cout << "Greeter received: " << call->reply.message() << std::endl;
+            if (call->_data.status.ok())
+                //std::cout << "Greeter received: " << call->reply.message() << std::endl;
+                call->done();
             else
                 std::cout << "RPC failed" << std::endl;
 
@@ -75,7 +77,7 @@ class GreeterClient {
 
     // Out of the passed in Channel comes the stub, stored here, our view of the
     // server's exposed services.
-    std::unique_ptr<STUB__::Stub> stub_;
+    std::unique_ptr<typename STUB__::Stub> stub_;
 
     // The producer-consumer queue we use to communicate asynchronously with the
     // gRPC runtime.

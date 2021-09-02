@@ -1,0 +1,3 @@
+[submodule "3rdparty/Promise"]
+	path = 3rdparty/Promise
+	url = https://github.com/aimar24/Promise
