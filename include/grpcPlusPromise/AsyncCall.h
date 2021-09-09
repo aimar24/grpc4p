@@ -45,7 +45,7 @@ public:
     {
 
     }
-    virtual void done() override
+    virtual void internalDone() override
     {
 
     };

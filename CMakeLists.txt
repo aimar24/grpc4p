@@ -5,7 +5,9 @@ include(CTest)
 enable_testing()
 
 
-include_directories(include/grpcPlusPromise)
+include_directories(
+    include/grpcPlusPromise
+    3rdparty/Promise/include)
 add_library(grpcPlusPromise src/grpcPlusPromise.cpp)
 
 add_subdirectory("3rdparty/Promise")

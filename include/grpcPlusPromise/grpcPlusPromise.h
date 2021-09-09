@@ -2,6 +2,7 @@
 #define GRPC_PLUS_PROMISE
 
 #include <grpcPlusPromise/AsyncCall.h>
+#include <Promise/Promise.h>
 
 #include <grpc++/grpc++.h>
 
@@ -19,8 +20,10 @@ class GreeterClient {
 
     // Assembles the client's payload and sends it to the server.
     template<typename REQUEST__ ,typename ASYNC_CALL__ , typename DATA__,
-      std::unique_ptr< ::grpc::ClientAsyncResponseReader<DATA__>> (*CALL_FUNC__)(::grpc::ClientContext* context, REQUEST__ request, ::grpc::CompletionQueue* cq)>
-    void call(REQUEST__ request , const ASYNC_CALL__ &call) {
+      std::unique_ptr< ::grpc::ClientAsyncResponseReader<DATA__>> 
+      (STUB__::Stub::*CALL_FUNC__)(::grpc::ClientContext* context,const REQUEST__ &request, ::grpc::CompletionQueue* cq)>
+    void call(REQUEST__ &request , ASYNC_CALL__ &call) {
+
         // Data we are sending to the server.
         //HelloRequest request;
         //request.set_name(user);
@@ -32,16 +35,16 @@ class GreeterClient {
         // an instance to store in "call" but does not actually start the RPC
         // Because we are using the asynchronous API, we need to hold on to
         // the "call" instance in order to get updates on the ongoing RPC.
-        call->response_reader =
-            stub_->CALL_FUNC__(&call._data.context, request, &cq_);
+        call._data.response_reader =
+            (stub_.get()->*CALL_FUNC__)(&call._data.context, request, &cq_);
 
         // StartCall initiates the RPC call
-        call->response_reader->StartCall();
+        call._data.response_reader->StartCall();
 
         // Request that, upon completion of the RPC, "reply" be updated with the
         // server's response; "status" with the indication of whether the operation
         // was successful. Tag the request with the memory address of the call object.
-        call->response_reader->Finish(&call->reply, &call->status, (void*)call);
+        call._data.response_reader->Finish(&call._data.reply, &call._data.status, (void*)&call);
 
     }
 

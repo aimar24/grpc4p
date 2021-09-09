@@ -8,7 +8,16 @@ class IAsyncCall
 {
     public:
     IAsyncCall(const AsyncCallDataBase& data):_data(data){}
-    virtual void done() = 0;
+
+    virtual void done() 
+    {
+        if(_onStatusChanged){
+            _onStatusChanged(this);
+        }
+        internalDone();
+    };
+
+    virtual void internalDone() = 0;
 
     const AsyncCallDataBase& _data;
 
