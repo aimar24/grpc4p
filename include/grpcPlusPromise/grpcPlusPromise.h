@@ -32,8 +32,8 @@ public:
              (STUB__::Stub::*CALL_FUNC__)(::grpc::ClientContext* context,const REQUEST__ &request, ::grpc::CompletionQueue* cq)>
     std::unique_ptr<Promise::PromiseBase> call(REQUEST__ &request , ASYNC_CALL__ *call) {
 
-        std::unique_ptr<Promise::PromiseBase> p = std::make_unique<Promise::PromiseBase>([&](Promise::PromiseBase::Handle& then,Promise::PromiseBase::Handle& catchHndle){
-                call->_onStatusChanged.push_back([&](){
+        std::unique_ptr<Promise::PromiseBase> p = std::make_unique<Promise::PromiseBase>([& , call](Promise::PromiseBase::Handle& then,Promise::PromiseBase::Handle& catchHndle){
+                call->_onStatusChanged.push_back([&, call](){
             std::any a = call;
             if(call->_data.status.ok()){
                 then(a);
