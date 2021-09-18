@@ -10,6 +10,8 @@ include_directories(
     3rdparty/Promise/include)
 add_library(grpcPlusPromise src/grpcPlusPromise.cpp)
 
+target_compile_features(grpcPlusPromise PRIVATE cxx_std_17)
+
 add_subdirectory("3rdparty/Promise")
 
 target_link_libraries(grpcPlusPromise

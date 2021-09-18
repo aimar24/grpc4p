@@ -2,6 +2,13 @@
 #define GRPC_PLUS_PROMISE_IASYNC_CALL
 
 #include <functional>
+#include <any>
+#include <vector>
+
+namespace Promise
+{
+    class PromiseBase;
+}
 
 class AsyncCallDataBase;
 class IAsyncCall
@@ -11,8 +18,8 @@ class IAsyncCall
 
     virtual void done() 
     {
-        if(_onStatusChanged){
-            _onStatusChanged(this);
+        for(const auto& c : _onStatusChanged){
+            c();
         }
         internalDone();
     };
@@ -23,7 +30,11 @@ class IAsyncCall
 
     virtual ~IAsyncCall() = default;
 
-    std::function<void(const IAsyncCall* const)> _onStatusChanged;
+    std::vector<std::function<void()>> _onStatusChanged;
+
+    //std::function<void(std::function<void(std::any)> , std::function<void(std::any)>>
+
+    //std::unique_ptr <Promise::PromiseBase> _promise;
 
 };
 
