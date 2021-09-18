@@ -7,12 +7,31 @@
 #include <grpc++/grpc++.h>
 
 #include <chrono>
+#include <type_traits>
 
 using grpc::Channel;
 using grpc::ClientAsyncResponseReader;
 using grpc::ClientContext;
 using grpc::CompletionQueue;
 using grpc::Status;
+
+
+template<typename T>
+struct function_traits;
+
+template<typename T , typename R, typename ...Args>
+struct function_traits<R (T::*)(Args...)>
+{
+    static const size_t nargs = sizeof...(Args);
+
+    typedef R result_type;
+
+    template <size_t i>
+    struct arg
+    {
+        typedef typename std::tuple_element<i, std::tuple<Args...>>::type type;
+    };
+};
 
 template<typename STUB__>
 class GreeterClient {
@@ -26,11 +45,13 @@ public:
         channel->WaitForConnected(deadline);
     }
 
+
+
     // Assembles the client's payload and sends it to the server.
     template<typename REQUEST__ ,typename ASYNC_CALL__ , typename DATA__,
              std::unique_ptr< ::grpc::ClientAsyncResponseReader<DATA__>>
              (STUB__::Stub::*CALL_FUNC__)(::grpc::ClientContext* context,const REQUEST__ &request, ::grpc::CompletionQueue* cq)>
-    std::unique_ptr<Promise::PromiseBase> call(REQUEST__ &request , ASYNC_CALL__ *call) {
+    std::unique_ptr<Promise::PromiseBase> callInternal(REQUEST__ &request , ASYNC_CALL__ *call) {
 
         std::unique_ptr<Promise::PromiseBase> p = std::make_unique<Promise::PromiseBase>([& , call](Promise::PromiseBase::Handle& then,Promise::PromiseBase::Handle& catchHndle){
                 call->_onStatusChanged.push_back([&, call](){
@@ -71,6 +92,20 @@ public:
 
         return p;
 
+    }
+
+
+    template<typename R, typename ...Args>
+    auto call(R (STUB__::Stub::*fun) (Args...))
+    {
+        using _REQUEST = typename std::remove_reference<typename std::remove_const<typename function_traits<decltype(fun)>::template arg<1>::type>::type>::type ;
+        using _REPLY = typename R::element_type;
+        using _ASYNC_CALL = ASyncCall<AsyncCallData<_REPLY>>;
+
+        using FFF =  std::unique_ptr<Promise::PromiseBase> (GreeterClient<STUB__>::* ) (_REQUEST & , _ASYNC_CALL *);
+        using functionType = decltype (fun);
+        auto fff= &GreeterClient<STUB__>::callInternal<_REQUEST,_ASYNC_CALL,_REPLY,fun>;
+        return fff;
     }
 
     // Loop while listening for completed responses.
