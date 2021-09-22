@@ -3,9 +3,9 @@
 
 #include <grpcPlusPromise/AsyncCall.h>
 #include <Promise/Promise.h>
-#include <any>
 #include <grpc++/grpc++.h>
 
+#include <any>
 #include <chrono>
 #include <type_traits>
 
@@ -67,16 +67,7 @@ public:
         });
     });
 
-        //call._promise = std::move(p);
-
-        // Data we are sending to the server.
-        //HelloRequest request;
-        //request.set_name(user);
-
-        // Call object to store rpc data
-        //AsyncClientCall* call = new AsyncClientCall;
-
-        // stub_->PrepareAsyncSayHello() creates an RPC object, returning
+        // stub_->PrepareAsync*() creates an RPC object, returning
         // an instance to store in "call" but does not actually start the RPC
         // Because we are using the asynchronous API, we need to hold on to
         // the "call" instance in order to get updates on the ongoing RPC.
@@ -95,30 +86,20 @@ public:
 
     }
 
-//    template<typename T>
-//    class checkType;
-
-//    template<typename R, typename ...Args>
-//    class checkType<R (STUB__::Stub::*) (Args...)>;
-
-
     template<typename T>
-    struct AA;
+    struct FunctionWrapper;
 
     template<typename T , typename R, typename ...Args>
-    struct AA<R (T::*)(Args...)>
+    struct FunctionWrapper<R (T::*)(Args...)>
     {
 
         public:
         using _REQUEST = typename std::remove_reference<typename std::remove_const<typename function_traits<R (T::*)(Args...)>::template arg<1>::type>::type>::type ;
         using _REPLY = typename std::remove_pointer<typename function_traits<decltype(&R::element_type::Finish)>::template arg<0>::type>::type;
         using _ASYNC_CALL = ASyncCall<AsyncCallData<_REPLY>>;
-
         using FType = R (T::*)(Args...);
-        using FFF =  std::unique_ptr<Promise::PromiseBase> (GrcpPlusPromise<STUB__>::* ) (_REQUEST & , _ASYNC_CALL *);
-        //FFF f = &GreeterClient<STUB__>::callInternal<_REQUEST,_ASYNC_CALL,_REPLY,fun>
 
-        AA(GrcpPlusPromise<STUB__> *t, FType f):_t(t), _f(f)
+        FunctionWrapper(GrcpPlusPromise<STUB__> *t, FType f):_t(t), _f(f)
         {
 
         }
@@ -136,23 +117,6 @@ public:
     };
 
 
-//    template<typename R, typename ...Args>
-//    constexpr auto call(R (STUB__::Stub::*fun) (Args...))
-//    {
-//        using _REQUEST = typename std::remove_reference<typename std::remove_const<typename function_traits<decltype(fun)>::template arg<1>::type>::type>::type ;
-//        using _REPLY = typename R::element_type;
-//        using _ASYNC_CALL = ASyncCall<AsyncCallData<_REPLY>>;
-
-//        using FFF =  std::unique_ptr<Promise::PromiseBase> (GreeterClient<STUB__>::* ) (_REQUEST & , _ASYNC_CALL *);
-//        using functionType = decltype (fun);
-//        //using functionType2 = std::unique_ptr<Promise::PromiseBase>(GreeterClient<STUB__>::*fff)
-//        functionType f2 = fun;
-//        //checkType<R , Args... ,fun> a;
-//        auto r = &GreeterClient<STUB__>::callInternal<_REQUEST,_ASYNC_CALL,_REPLY,fun>;
-////        return fff;
-//        return 1;
-//    }
-
 
     template<typename R, typename ...Args>
     constexpr auto call(R (STUB__::Stub::*fun) (Args...))
@@ -161,15 +125,7 @@ public:
         using _REPLY = typename R::element_type;
         using _ASYNC_CALL = ASyncCall<AsyncCallData<_REPLY>>;
 
-        using FFF =  std::unique_ptr<Promise::PromiseBase> (GrcpPlusPromise<STUB__>::* ) (_REQUEST & , _ASYNC_CALL *);
-        using functionType = decltype (fun);
-        //using functionType2 = std::unique_ptr<Promise::PromiseBase>(GreeterClient<STUB__>::*fff)
-        functionType f2 = fun;
-        AA<R (STUB__::Stub::*) (Args...)> a (this, fun);
-        //checkType<R , Args... ,fun> a;
-        //auto r = &GreeterClient<STUB__>::callInternal<_REQUEST,_ASYNC_CALL,_REPLY,fun>;
-//        return fff;
-        return a;
+        return FunctionWrapper<R (STUB__::Stub::*) (Args...)>(this, fun);
     }
 
     // Loop while listening for completed responses.
@@ -192,10 +148,6 @@ public:
                 call->done();
 
             }
-            //            else if(call->_data.status.error_code() == grpc::StatusCode::ABORTED)
-            //            {
-
-            //            }
             else
                 std::cout << "RPC failed" << std::endl;
 
