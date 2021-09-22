@@ -34,9 +34,9 @@ struct function_traits<R (T::*)(Args...)>
 };
 
 template<typename STUB__>
-class GreeterClient {
+class GrcpPlusPromise {
 public:
-    explicit GreeterClient(std::shared_ptr<Channel> channel)
+    explicit GrcpPlusPromise(std::shared_ptr<Channel> channel)
         : stub_(STUB__::NewStub(channel)) {
 
         std::chrono::time_point deadline = std::chrono::system_clock::now() +
@@ -46,12 +46,13 @@ public:
     }
 
 
+    template <typename D , typename R>
+    using functionCall = std::unique_ptr< ::grpc::ClientAsyncResponseReader<D>>
+    (STUB__::Stub::*)(::grpc::ClientContext* context,const R &request, ::grpc::CompletionQueue* cq);
 
     // Assembles the client's payload and sends it to the server.
-    template<typename REQUEST__ ,typename ASYNC_CALL__ , typename DATA__,
-             std::unique_ptr< ::grpc::ClientAsyncResponseReader<DATA__>>
-             (STUB__::Stub::*CALL_FUNC__)(::grpc::ClientContext* context,const REQUEST__ &request, ::grpc::CompletionQueue* cq)>
-    std::unique_ptr<Promise::PromiseBase> callInternal(REQUEST__ &request , ASYNC_CALL__ *call) {
+    template<typename REQUEST__ ,typename ASYNC_CALL__ , typename DATA__>
+    std::unique_ptr<Promise::PromiseBase> callInternal(functionCall<DATA__,REQUEST__> CALL_FUNC__,REQUEST__ &request , ASYNC_CALL__ *call) {
 
         std::unique_ptr<Promise::PromiseBase> p = std::make_unique<Promise::PromiseBase>([& , call](Promise::PromiseBase::Handle& then,Promise::PromiseBase::Handle& catchHndle){
                 call->_onStatusChanged.push_back([&, call](){
@@ -94,18 +95,81 @@ public:
 
     }
 
+//    template<typename T>
+//    class checkType;
+
+//    template<typename R, typename ...Args>
+//    class checkType<R (STUB__::Stub::*) (Args...)>;
+
+
+    template<typename T>
+    struct AA;
+
+    template<typename T , typename R, typename ...Args>
+    struct AA<R (T::*)(Args...)>
+    {
+
+        public:
+        using _REQUEST = typename std::remove_reference<typename std::remove_const<typename function_traits<R (T::*)(Args...)>::template arg<1>::type>::type>::type ;
+        using _REPLY = typename std::remove_pointer<typename function_traits<decltype(&R::element_type::Finish)>::template arg<0>::type>::type;
+        using _ASYNC_CALL = ASyncCall<AsyncCallData<_REPLY>>;
+
+        using FType = R (T::*)(Args...);
+        using FFF =  std::unique_ptr<Promise::PromiseBase> (GrcpPlusPromise<STUB__>::* ) (_REQUEST & , _ASYNC_CALL *);
+        //FFF f = &GreeterClient<STUB__>::callInternal<_REQUEST,_ASYNC_CALL,_REPLY,fun>
+
+        AA(GrcpPlusPromise<STUB__> *t, FType f):_t(t), _f(f)
+        {
+
+        }
+
+        std::unique_ptr<Promise::PromiseBase> operator ()(_REQUEST & r, _ASYNC_CALL *a){
+            return _t->GrcpPlusPromise<STUB__>::callInternal<_REQUEST,_ASYNC_CALL,_REPLY>(_f,r,a);
+        };
+
+        private:
+        GrcpPlusPromise<STUB__> *_t = nullptr;
+        FType _f;
+
+
+
+    };
+
+
+//    template<typename R, typename ...Args>
+//    constexpr auto call(R (STUB__::Stub::*fun) (Args...))
+//    {
+//        using _REQUEST = typename std::remove_reference<typename std::remove_const<typename function_traits<decltype(fun)>::template arg<1>::type>::type>::type ;
+//        using _REPLY = typename R::element_type;
+//        using _ASYNC_CALL = ASyncCall<AsyncCallData<_REPLY>>;
+
+//        using FFF =  std::unique_ptr<Promise::PromiseBase> (GreeterClient<STUB__>::* ) (_REQUEST & , _ASYNC_CALL *);
+//        using functionType = decltype (fun);
+//        //using functionType2 = std::unique_ptr<Promise::PromiseBase>(GreeterClient<STUB__>::*fff)
+//        functionType f2 = fun;
+//        //checkType<R , Args... ,fun> a;
+//        auto r = &GreeterClient<STUB__>::callInternal<_REQUEST,_ASYNC_CALL,_REPLY,fun>;
+////        return fff;
+//        return 1;
+//    }
+
 
     template<typename R, typename ...Args>
-    auto call(R (STUB__::Stub::*fun) (Args...))
+    constexpr auto call(R (STUB__::Stub::*fun) (Args...))
     {
         using _REQUEST = typename std::remove_reference<typename std::remove_const<typename function_traits<decltype(fun)>::template arg<1>::type>::type>::type ;
         using _REPLY = typename R::element_type;
         using _ASYNC_CALL = ASyncCall<AsyncCallData<_REPLY>>;
 
-        using FFF =  std::unique_ptr<Promise::PromiseBase> (GreeterClient<STUB__>::* ) (_REQUEST & , _ASYNC_CALL *);
+        using FFF =  std::unique_ptr<Promise::PromiseBase> (GrcpPlusPromise<STUB__>::* ) (_REQUEST & , _ASYNC_CALL *);
         using functionType = decltype (fun);
-        auto fff= &GreeterClient<STUB__>::callInternal<_REQUEST,_ASYNC_CALL,_REPLY,fun>;
-        return fff;
+        //using functionType2 = std::unique_ptr<Promise::PromiseBase>(GreeterClient<STUB__>::*fff)
+        functionType f2 = fun;
+        AA<R (STUB__::Stub::*) (Args...)> a (this, fun);
+        //checkType<R , Args... ,fun> a;
+        //auto r = &GreeterClient<STUB__>::callInternal<_REQUEST,_ASYNC_CALL,_REPLY,fun>;
+//        return fff;
+        return a;
     }
 
     // Loop while listening for completed responses.
